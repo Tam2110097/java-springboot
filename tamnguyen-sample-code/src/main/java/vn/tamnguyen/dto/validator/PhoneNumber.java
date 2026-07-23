@@ -1,4 +1,4 @@
-package vn.tamnguyen.util;
+package vn.tamnguyen.dto.validator;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
