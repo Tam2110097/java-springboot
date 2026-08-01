@@ -13,6 +13,7 @@ import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.annotation.*;
+import vn.tamnguyen.configuration.Translator;
 import vn.tamnguyen.dto.request.SampleDTO;
 import vn.tamnguyen.dto.request.UserRequestDTO;
 import vn.tamnguyen.dto.response.ResponseData;
@@ -39,27 +40,27 @@ public class UserController {
 //                .id(1)
 //                .name("TamNguyen")
 //                .build();
-        return new ResponseData<>(HttpStatus.CREATED.value(), "User added successfully,", 1);
+        return new ResponseData<>(HttpStatus.CREATED.value(), Translator.toLocale("user.add.success"), 1);
     }
 
     @PutMapping("/{userId}")
     public ResponseData<?> updateUser(@PathVariable @Min(value = 1, message = "userId must be greater than 0") int userId, @Valid @RequestBody UserRequestDTO user) {
 //        System.out.println("Update user");
         log.info("Request update userId={}", userId);
-        return new ResponseData<>(HttpStatus.ACCEPTED.value(), "User updated successfully");
+        return new ResponseData<>(HttpStatus.ACCEPTED.value(), Translator.toLocale("user.upd.success"));
     }
 
     @PatchMapping("/{userId}")
     public ResponseData<?> updateStatus(@Min(1) @PathVariable int userId,
                                @RequestParam boolean status) {
         log.info("Request change status, userId={}", userId);
-        return new ResponseData<>(HttpStatus.ACCEPTED.value(), "User status changed successfully");
+        return new ResponseData<>(HttpStatus.ACCEPTED.value(), Translator.toLocale("user.change.success"));
     }
 
     @DeleteMapping("/{userId}")
     public ResponseData<?> deleteUser(@PathVariable @Min(value = 1, message = "userId must be greater than 0") int userId) {
         log.info("Request delete userId={}", userId);
-        return new ResponseData<>(HttpStatus.NO_CONTENT.value(), "User deleted successfully");
+        return new ResponseData<>(HttpStatus.NO_CONTENT.value(), Translator.toLocale("user.del.success"));
     }
 
     @GetMapping("/{userId}")
