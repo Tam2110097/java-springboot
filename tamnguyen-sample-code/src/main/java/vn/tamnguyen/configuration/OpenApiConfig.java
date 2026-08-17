@@ -11,22 +11,23 @@ import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
 @Configuration
+@Profile("!prod")
 public class OpenApiConfig {
 
     @Bean
-    public OpenAPI openApi(@Value("${open.api.title}") String title,
-                           @Value("${open.api.version}") String version,
-                           @Value("${open.api.description}") String description,
-                           @Value("${open.api.serverUrl}") String serverUrl,
-                           @Value("${open.api.serverName}") String serverName) {
+    @Profile("!prod") // có thể sử dụng trên các method
+    public OpenAPI openApi( @Value("${openapi.service.title}") String title,
+                            @Value("${openapi.service.version}") String version,
+                            @Value("${openapi.service.server}") String serverUrl) {
         return new OpenAPI().info(new Info().title(title)
-                .version(version).description(description)
+                .version(version).description("API documents")
                 .license(new License().name("API license").url("http://domain.vn/license")))
-                .servers(List.of(new Server().url(serverUrl).description(serverName)));
+                .servers(List.of(new Server().url(serverUrl)));
 //                .components(
 //                        new Components()
 //                                .addSecuritySchemes(
@@ -39,9 +40,9 @@ public class OpenApiConfig {
     }
 
     @Bean
-    public GroupedOpenApi groupedOpenApi() {
+    public GroupedOpenApi groupedOpenApi(@Value("${openapi.service.api-docs}") String apiDocs) {
         return GroupedOpenApi.builder()
-                .group("api-service")
+                .group(apiDocs)
                 .packagesToScan("vn.tamnguyen.controller")
                 .build();
     }
