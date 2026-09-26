@@ -14,6 +14,7 @@ import vn.tamnguyen.dto.response.UserDetailResponse;
 import vn.tamnguyen.exception.ResourceNotFoundException;
 import vn.tamnguyen.model.Address;
 import vn.tamnguyen.model.User;
+import vn.tamnguyen.repository.SearchRepository;
 import vn.tamnguyen.repository.UserRepository;
 import vn.tamnguyen.service.UserService;
 import vn.tamnguyen.util.UserStatus;
@@ -32,6 +33,8 @@ import java.util.regex.Pattern;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+
+    private final SearchRepository searchRepository;
 
     @Override
     public long saveUser(UserRequestDTO request) {
@@ -118,7 +121,7 @@ public class UserServiceImpl implements UserService {
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .status(user.getStatus())
-                .type(user.getType().name())
+                .type(user.getType())
                 .build();
     }
 
@@ -161,7 +164,7 @@ public class UserServiceImpl implements UserService {
                         .email(user.getEmail())
                         .username(user.getUsername())
                         .status(user.getStatus())
-                        .type(user.getType().name())
+                        .type(user.getType())
                         .build())
                 .toList();
 
@@ -209,7 +212,7 @@ public class UserServiceImpl implements UserService {
                         .email(user.getEmail())
                         .username(user.getUsername())
                         .status(user.getStatus())
-                        .type(user.getType().name())
+                        .type(user.getType())
                         .build())
                 .toList();
 
@@ -219,6 +222,11 @@ public class UserServiceImpl implements UserService {
                 .totalPage(page.getTotalPages())
                 .items(list)
                 .build();
+    }
+
+    @Override
+    public PageResponse getAllUsersWithSortByColumnAndSearch(int pageNo, int pageSize, String search, String sortBy) {
+        return searchRepository.getAllUsersWithSortByColumnAndSearch(pageNo, pageSize, search, sortBy);
     }
 
     /**
