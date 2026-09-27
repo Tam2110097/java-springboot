@@ -3,6 +3,7 @@ package vn.tamnguyen.repository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -10,7 +11,12 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.StringUtils;
 import vn.tamnguyen.dto.response.PageResponse;
+import vn.tamnguyen.model.Address;
+import vn.tamnguyen.model.User;
+import vn.tamnguyen.repository.criteria.SearchCriteria;
+import vn.tamnguyen.repository.criteria.UserSearchQueryCriteriaConsumer;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -21,6 +27,9 @@ public class SearchRepository {
     @PersistenceContext
     private EntityManager entityManager;
 
+    /*
+        search with customize query and sort
+    */
     public PageResponse<?> getAllUsersWithSortByColumnAndSearch(int pageNo, int pageSize, String search, String sortBy) {
 
         StringBuilder sqlQuery = new StringBuilder("select new vn.tamnguyen.dto.response.UserDetailResponse(u.id, u.firstName, u.lastName, u.email, u.phone, u.dateOfBirth, u.gender, u.username, u.type, u.status) from User u where 1=1");
@@ -89,5 +98,107 @@ public class SearchRepository {
                 .totalPage(page.getTotalPages())
                 .items(page.stream().toList())
                 .build();
+    }
+
+
+    /*
+        advance search with criteria and sort
+        can join and search with tables
+    */
+    public PageResponse advanceSearchUser(int pageNo, int pageSize, String sortBy, String address, String... search) {
+        // gia tri truyen vao search co dang firstName:T, lastName:T, email
+
+        List<SearchCriteria> searchCriteriaList = new ArrayList<>();
+        //1. lay ra danh sach user
+        if(search != null) {
+            for(String s : search) {
+                //firstName:value
+
+                Pattern pattern = Pattern.compile("(\\w+?)(:|>|<)(.*)");
+                Matcher matcher = pattern.matcher(s);
+
+                if(matcher.find()) {
+                    searchCriteriaList.add(new SearchCriteria(matcher.group(1), matcher.group(2), matcher.group(3)));
+                }
+            }
+        }
+
+        //2. lay ra so luong bang ghi
+        List<User> users = getUsers(pageNo, pageSize, searchCriteriaList, sortBy, address);
+
+        Long totalElements = getTotalElements(searchCriteriaList, address);
+
+        return PageResponse.builder()
+                .pageNo(pageNo) //offset = vi tri cua ban ghi trong danh sach
+                .pageSize(pageSize)
+                .totalPage(totalElements.intValue()) //total elements
+                .items(users)
+                .build();
+    }
+
+    private List<User> getUsers(int pageNo, int pageSize, List<SearchCriteria> searchCriteriaList, String sortBy, String address) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<User> query = criteriaBuilder.createQuery(User.class);
+        Root<User> root = query.from(User.class);
+
+        // xu ly cac dieu kien tim kiem
+        Predicate predicate = criteriaBuilder.conjunction();
+        UserSearchQueryCriteriaConsumer queryConsumer = new UserSearchQueryCriteriaConsumer(criteriaBuilder, predicate, root);
+
+        // xu ly join bang
+        if(StringUtils.hasLength(address)) {
+            Join<Address, User> addressUserJoin = root.join("addresses");
+            Predicate addressPredicate = criteriaBuilder.like(addressUserJoin.get("city"), "%" + address + "%");
+            // tim kiem tren tat ca cac field cua address
+            query.where(predicate, addressPredicate);
+        } else {
+            searchCriteriaList.forEach(queryConsumer);
+            predicate = queryConsumer.getPredicate();
+            query.where(predicate);
+        }
+
+
+
+        //sort
+        if(StringUtils.hasLength(sortBy)) {
+            Pattern pattern = Pattern.compile("(\\w+?)(:)(asc|desc)");
+            Matcher matcher = pattern.matcher(sortBy);
+
+            if(matcher.find()) {
+                String columnName = matcher.group(1);
+                if(matcher.group(3).equalsIgnoreCase("desc")) {
+                    query.orderBy(criteriaBuilder.desc(root.get(columnName)));
+                } else {
+                    query.orderBy(criteriaBuilder.asc(root.get(columnName)));
+                }
+            }
+        }
+
+        return entityManager.createQuery(query).setFirstResult(pageNo).setMaxResults(pageSize).getResultList();
+    }
+
+    private Long getTotalElements(List<SearchCriteria> criteriaList, String address) {
+        CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+        CriteriaQuery<Long> query = criteriaBuilder.createQuery(Long.class);
+        Root<User> root = query.from(User.class);
+
+        Predicate predicate = criteriaBuilder.conjunction();
+        UserSearchQueryCriteriaConsumer queryConsumer = new UserSearchQueryCriteriaConsumer(criteriaBuilder, predicate, root);
+
+        // xu ly join bang
+        if(StringUtils.hasLength(address)) {
+            Join<Address, User> addressUserJoin = root.join("addresses");
+            Predicate addressPredicate = criteriaBuilder.like(addressUserJoin.get("city"), "%" + address + "%");
+            // tim kiem tren tat ca cac field cua address
+            query.select(criteriaBuilder.count(root));
+            query.where(predicate, addressPredicate);
+        } else {
+            criteriaList.forEach(queryConsumer);
+            predicate = queryConsumer.getPredicate();
+            query.select(criteriaBuilder.count(root));
+            query.where(predicate);
+        }
+
+        return entityManager.createQuery(query).getSingleResult();
     }
 }

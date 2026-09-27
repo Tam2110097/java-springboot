@@ -23,5 +23,5 @@ public interface UserService {
 
     PageResponse getAllUsersWithSortByColumnAndSearch(int pageNo, int pageSize, String search, String sortBy);
 
-
+    PageResponse advanceSearchByCriteria(int pageNo, int pageSize, String sortBy, String address, String... search);
 }

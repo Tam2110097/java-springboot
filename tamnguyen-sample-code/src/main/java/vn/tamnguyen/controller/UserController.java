@@ -156,4 +156,22 @@ public class UserController {
             return new ResponseError(HttpStatus.BAD_REQUEST.value(), e.getMessage());
         }
     }
+
+    @Operation(summary = "Get list of users with sort by criteria", description = "Send a request via this API to get user list by pageNo, pageSize and sort by multiple column")
+    @GetMapping("/advance-search-by-criteria")
+    public ResponseData<PageResponse<?>> advanceSearchByCriteria(@RequestParam(defaultValue = "0", required = false) int pageNo,
+                                                                 @RequestParam(defaultValue = "20", required = false) int pageSize,
+                                                                 @RequestParam(required = false) String sortBy,
+                                                                 @RequestParam(required = false) String address,
+                                                                 @RequestParam(required = false) String... search) {
+        log.info("Request advance search query by criteria");
+
+        try {
+            PageResponse<?> users = userService.advanceSearchByCriteria(pageNo, pageSize, sortBy, address,search);
+            return new ResponseData<>(HttpStatus.OK.value(), "users", users);
+        } catch (Exception e) {
+            log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());
+            return new ResponseError(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+        }
+    }
 }
