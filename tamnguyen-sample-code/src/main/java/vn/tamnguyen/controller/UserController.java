@@ -6,6 +6,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -168,6 +169,22 @@ public class UserController {
 
         try {
             PageResponse<?> users = userService.advanceSearchByCriteria(pageNo, pageSize, sortBy, address,search);
+            return new ResponseData<>(HttpStatus.OK.value(), "users", users);
+        } catch (Exception e) {
+            log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());
+            return new ResponseError(HttpStatus.BAD_REQUEST.value(), e.getMessage());
+        }
+    }
+
+    @Operation(summary = "Advance search query by specification", description = "Send a request via this API to get user list by page and search with user and address")
+    @GetMapping("/advance-search-by-specification")
+    public ResponseData<PageResponse<?>> advanceSearchByCriteria(Pageable page,
+                                                                 @RequestParam(required = false) String[] user,
+                                                                 @RequestParam(required = false) String[] address) {
+        log.info("Request advance search query by specification");
+
+        try {
+            PageResponse<?> users = userService.advanceSearchWithSpecification(page, user, address);
             return new ResponseData<>(HttpStatus.OK.value(), "users", users);
         } catch (Exception e) {
             log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());

@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import vn.tamnguyen.dto.request.AddressDTO;
@@ -16,14 +18,14 @@ import vn.tamnguyen.model.Address;
 import vn.tamnguyen.model.User;
 import vn.tamnguyen.repository.SearchRepository;
 import vn.tamnguyen.repository.UserRepository;
+import vn.tamnguyen.repository.specification.UserSpec;
+import vn.tamnguyen.repository.specification.UserSpecificationBuilder;
 import vn.tamnguyen.service.UserService;
+import vn.tamnguyen.util.Gender;
 import vn.tamnguyen.util.UserStatus;
 import vn.tamnguyen.util.UserType;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -185,17 +187,19 @@ public class UserServiceImpl implements UserService {
 
         List<Sort.Order> orders = new ArrayList<>();
 
-        for(String sortBy : sorts) {
-            //firstName:asc|desc
+        if(sorts != null) {
+            for(String sortBy : sorts) {
+                //firstName:asc|desc
 
-            Pattern pattern = Pattern.compile("(\\w+?)(:)(.*)");
-            Matcher matcher = pattern.matcher(sortBy);
+                Pattern pattern = Pattern.compile("(\\w+?)(:)(.*)");
+                Matcher matcher = pattern.matcher(sortBy);
 
-            if(matcher.find()) {
-                if(matcher.group(3).equalsIgnoreCase("asc")) {
-                    orders.add(new Sort.Order(Sort.Direction.ASC, matcher.group(1)));
-                } else {
-                    orders.add(new Sort.Order(Sort.Direction.DESC, matcher.group(1)));
+                if(matcher.find()) {
+                    if(matcher.group(3).equalsIgnoreCase("asc")) {
+                        orders.add(new Sort.Order(Sort.Direction.ASC, matcher.group(1)));
+                    } else {
+                        orders.add(new Sort.Order(Sort.Direction.DESC, matcher.group(1)));
+                    }
                 }
             }
         }
@@ -227,6 +231,61 @@ public class UserServiceImpl implements UserService {
     @Override
     public PageResponse getAllUsersWithSortByColumnAndSearch(int pageNo, int pageSize, String search, String sortBy) {
         return searchRepository.getAllUsersWithSortByColumnAndSearch(pageNo, pageSize, search, sortBy);
+    }
+
+    @Override
+    public PageResponse advanceSearchByCriteria(int pageNo, int pageSize, String sortBy, String address, String... search) {
+        return searchRepository.advanceSearchUser(pageNo, pageSize, sortBy, address, search);
+    }
+
+    @Override
+    public PageResponse<?> advanceSearchWithSpecification(Pageable pageable, String[] user, String[] address) {
+
+        Page<User> users = null;
+        List<User> list = new ArrayList<>();
+
+        if(user != null && address != null) {
+            //tim kiem tren ca user va address --> join table
+
+            return searchRepository.getUsersJoinedAddress(pageable, user, address);
+
+        } else if(user != null && address == null) {
+            //tim kiem tren bang user khong can join bang address
+
+//            Specification<User> spec = UserSpec.hasFirstName("B");
+//            Specification<User> genderSpec = UserSpec.notEqualGender(Gender.MALE);
+//            Specification<User> finalSpec = spec.and(genderSpec);
+
+            UserSpecificationBuilder builder = new UserSpecificationBuilder();
+
+            for(String s : user) {
+                Pattern pattern = Pattern.compile("(\\w+?)([:<>~!])(.*)(\\p{Punct}?)(.*)(\\p{Punct}?)");
+                Matcher matcher = pattern.matcher(s);
+
+                if(matcher.find()) {
+                    builder.with(matcher.group(1), matcher.group(2), matcher.group(3), matcher.group(4), matcher.group(5));
+                }
+            }
+
+           list = userRepository.findAll(builder.build());
+            return PageResponse.builder()
+                    .pageNo(pageable.getPageNumber())
+                    .pageSize(pageable.getPageSize())
+                    .totalPage(10)
+                    .items(list)
+                    .build();
+        } else {
+            users = userRepository.findAll(pageable);
+        }
+
+        // neu khong nhap dk tim kiem tra lai 1 danh sach co phan trang
+
+        return PageResponse.builder()
+                .pageNo(pageable.getPageNumber())
+                .pageSize(pageable.getPageSize())
+                .totalPage(10)
+                .items(users)
+                .build();
     }
 
     /**
