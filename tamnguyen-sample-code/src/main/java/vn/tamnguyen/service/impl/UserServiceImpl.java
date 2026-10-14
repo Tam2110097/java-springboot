@@ -1,5 +1,6 @@
 package vn.tamnguyen.service.impl;
 
+import jakarta.mail.MessagingException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -20,11 +21,13 @@ import vn.tamnguyen.repository.SearchRepository;
 import vn.tamnguyen.repository.UserRepository;
 import vn.tamnguyen.repository.specification.UserSpec;
 import vn.tamnguyen.repository.specification.UserSpecificationBuilder;
+import vn.tamnguyen.service.MailService;
 import vn.tamnguyen.service.UserService;
 import vn.tamnguyen.util.Gender;
 import vn.tamnguyen.util.UserStatus;
 import vn.tamnguyen.util.UserType;
 
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,8 +41,10 @@ public class UserServiceImpl implements UserService {
 
     private final SearchRepository searchRepository;
 
+    private final MailService mailService;
+
     @Override
-    public long saveUser(UserRequestDTO request) {
+    public long saveUser(UserRequestDTO request) throws MessagingException, UnsupportedEncodingException {
         User user = User.builder()
                 .firstName(request.getFirstName())
                 .lastName(request.getLastName())
@@ -66,6 +71,11 @@ public class UserServiceImpl implements UserService {
                         .build()));
 
         userRepository.save(user);
+
+        if(user.getId() != null) {
+            // send email confirm here
+            mailService.sendConfirmLink(user.getEmail(), user.getId(), "secretCode");
+        }
 
         log.info("User has saved!");
 
@@ -286,6 +296,11 @@ public class UserServiceImpl implements UserService {
                 .totalPage(10)
                 .items(users)
                 .build();
+    }
+
+    @Override
+    public void confirmUser(int userId, String secretCode) {
+        log.info("Confirmed!");
     }
 
     /**

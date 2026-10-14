@@ -2,6 +2,7 @@ package vn.tamnguyen.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,8 @@ import vn.tamnguyen.dto.request.UserRequestDTO;
 import vn.tamnguyen.dto.response.*;
 import vn.tamnguyen.service.UserService;
 import vn.tamnguyen.util.UserStatus;
+
+import java.io.IOException;
 
 import static jakarta.servlet.RequestDispatcher.ERROR_MESSAGE;
 
@@ -40,9 +43,6 @@ public class UserController {
             log.error("ErrorMessage = {}", e.getMessage(), e.getCause());
             return new ResponseError(HttpStatus.BAD_REQUEST.value(), "Add user fail");
         }
-
-
-
     }
 
     @Operation(summary = "Update user", description = "Send a request via this API to update user")
@@ -73,8 +73,24 @@ public class UserController {
             log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());
             return new ResponseError(HttpStatus.BAD_REQUEST.value(), "Update user status fail");
         }
+    }
 
+    @GetMapping("/confirm/{userId}")
+    public ResponseData<Void> confirmUser(@Min(1) @PathVariable int userId,
+                                          @RequestParam String secretCode,
+                                          HttpServletResponse response) throws IOException {
+        log.info("Confirm user userId={}, secretCode={}", userId, secretCode);
 
+        try {
+            userService.confirmUser(userId, secretCode);
+            return new ResponseData<>(HttpStatus.ACCEPTED.value(), "User confirmed!");
+        } catch (Exception e) {
+            log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());
+            return new ResponseError(HttpStatus.BAD_REQUEST.value(), "Confirmation was failure");
+        } finally {
+            // direct to login page
+            response.sendRedirect("http://youtube.com");
+        }
     }
 
     @Operation(summary = "Delete user permanently", description = "Send a request via this API to delete user permanently")
@@ -89,8 +105,6 @@ public class UserController {
             log.error(ERROR_MESSAGE, e.getMessage(), e.getCause());
             return new ResponseError(HttpStatus.BAD_REQUEST.value(), "Delete user fail");
         }
-
-
     }
 
     @Operation(summary = "Get user detail", description = "Send a request via this API to get user information")
